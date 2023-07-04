@@ -472,6 +472,9 @@ function number_of_elements = get_number_of_elements(hdr)
     elseif hdr.format(1) == 'C'
         elem_per_pt = 2;
         cplx = 1;
+    elseif hdr.format(1) == 'V'
+        elem_per_pt = 3;
+        cplx = 0;
     elseif hdr.format(1) == 'N'
         elem_per_pt = -1; % not known
         cplx = 0;
@@ -509,7 +512,8 @@ function number_of_elements = get_number_of_elements(hdr)
     end
 
     if hdr.type == 2000
-        number_of_elements = number_of_elements / hdr.subsize;
+        bpe = bpa * elem_per_pt;
+        number_of_elements = hdr.data_size / bpe / hdr.subsize;
     elseif hdr.type == 5001
         bpe = hdr.reclen;
         number_of_elements = hdr.data_size / bpe;
