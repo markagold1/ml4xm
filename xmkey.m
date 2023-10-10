@@ -511,6 +511,9 @@ function number_of_elements = get_number_of_elements(hdr)
         error('Unsupported data format %s.', hdr.format(2));
     end
 
+    bpe = bpa * elem_per_pt;
+    nelem = hdr.data_size / bpe;
+
     if hdr.type == 2000
         bpe = bpa * elem_per_pt;
         number_of_elements = hdr.data_size / bpe / hdr.subsize;
