@@ -220,7 +220,7 @@ function keywords = readkeywords(bluefile)
     % Main header keywords
     if isfield(hdr,'mainkeywords')
         mkl = hdr.mainkeywords.keylength;
-        mkv = strsplit(hdr.mainkeywords.keywords,'\0');
+        mkv = strsplitnull(hdr.mainkeywords.keywords);
         for kk=1:numel(mkv)
             if numel(mkv{kk})
                 key = strsplit(mkv{kk},'=');
@@ -279,6 +279,7 @@ function [keywords,ext_hdr_bytes] = addkeywords(bluefile,keywords_to_add)
         append_start = ftell(fid);
         pad = mod(512 - mod(append_start,512),512);
         append_start = append_start + pad;
+        ext_hdr_start = append_start / 512;
         if pad > 0
             fwrite(fid,zeros(pad,1),'int8');
         end
@@ -286,7 +287,6 @@ function [keywords,ext_hdr_bytes] = addkeywords(bluefile,keywords_to_add)
 
     % When we reach here, append_start is pointing to the
     % place in fid to begin adding keywords
-    ext_hdr_start = append_start / 512;
     for kk = 1:numel(keywords_to_add)
         fseek(fid,append_start,'bof');
         name = keywords_to_add{kk}{1};
@@ -597,5 +597,34 @@ function S = sizeOf(V)
         otherwise
             fprintf(2,'sizeOf: class %s not supported\n', V);
             S = nan;
+    end
+end % function
+
+% Workaround for strsplit(str,'\0') bug in GNU Octave 3.8.2
+function C = strsplitnull(str)
+    C = {};
+    dat = double(str);
+    if dat(1) == 0
+        C{end+1} = char([]);
+    end
+    if dat(end) == 0
+        append = true;
+    else
+        append = false;
+    end
+    dat(end+1) = 0;
+    while 1
+        ix = find(dat == 0,1);
+        c = char(dat(1:ix-1));
+        if numel(c)
+            C{end+1} = c;
+        end
+        if ix >= numel(dat)
+            break
+        end
+        dat = dat(ix+1:end);
+    end
+    if append
+        C{end+1} = char([]);
     end
 end % function
