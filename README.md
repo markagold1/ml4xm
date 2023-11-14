@@ -7,4 +7,4 @@
 
 Requirements:
 * MATLAB R2017 or newer (no toolboxes needed)
-* GNU Octave version 4.0.0 or newer (no packages needed)
+* GNU Octave version 3.8.2 or newer (no packages needed)
