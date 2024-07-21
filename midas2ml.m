@@ -45,12 +45,6 @@ if rem(nstart, 1) || rem(nend, 1)
 end
 
 hdr = readheader(file);
-if nstart == 0 && nend == 0
-  data = [];
-  if isfield(hdr,'timecode')
-    hdr.timecode = format_timecode(hdr.timecode);
-  end;
-end
 stat = getstat(hdr);
 data = readdata(file,hdr,stat,nstart,nend);
 hdr.nelem = stat.nelem;

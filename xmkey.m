@@ -55,7 +55,7 @@ function [hdr, keywords] = xmkey(bluefile,varargin)
     % 'Delete' command
     if strcmpi(cmd, 'Delete')
         C = readkeywords(bluefile);
-        C = removekeywords(C, in_keywords);
+        C = removekeywords(C, in_keywords{:});
         ok = wipekeywords(bluefile);
         keywords = addkeywords(bluefile,C);
     end
@@ -145,7 +145,7 @@ function hdr = readheader(bluefile)
     keylength = fread(fid,1,'int32', 0, hdr_endian);
     if keylength
       hdr.mainkeywords.keylength = keylength;
-      keywords = fread(fid,keylength,'char',0,hdr_endian);
+      keywords = fread(fid,keylength,'uchar',0,hdr_endian);
       hdr.mainkeywords.keywords = char(keywords(:).');
     end
   
@@ -258,6 +258,23 @@ function [keywords,ext_hdr_bytes] = addkeywords(bluefile,keywords_to_add)
 
     hdr = readheader(bluefile);
     keywords = readkeywords(bluefile);
+    main_keynames_c = main_keynames(hdr);
+
+    % Remove any main header keywords from the list of keywords to add
+    keywords_to_add = remove_from_list(main_keynames_c, keywords_to_add);
+
+    % If there are no keywords remaining then return early
+    if isempty(keywords_to_add)
+        if isfield(hdr,'ext_hdr_bytes')
+            ext_hdr_bytes = hdr.ext_hdr_bytes;
+        else
+            ext_hdr_bytes = 0;
+        end
+        return
+    end
+
+    % Remove main header keywords from those retrieved in the header
+    keywords = remove_from_list(main_keynames_c, keywords);
 
     fid = fopen_rw(bluefile);
     if fid < 0
@@ -404,6 +421,9 @@ function [keycellarray_out] = removekeywords(keycellarray, keysToRemoveC)
     for kk = 1:numel(keysToRemoveC)
         keyToRemove = keysToRemoveC{kk};
         for jj = 1:numel(keycellarray)
+            if isempty(keycellarray{jj})
+                continue
+            end
             if strcmpi(keycellarray{jj}{1},keyToRemove)
                 keycellarray{jj} = {};
                 break
@@ -472,9 +492,6 @@ function number_of_elements = get_number_of_elements(hdr)
     elseif hdr.format(1) == 'C'
         elem_per_pt = 2;
         cplx = 1;
-    elseif hdr.format(1) == 'V'
-        elem_per_pt = 3;
-        cplx = 0;
     elseif hdr.format(1) == 'N'
         elem_per_pt = -1; % not known
         cplx = 0;
@@ -511,9 +528,11 @@ function number_of_elements = get_number_of_elements(hdr)
         error('Unsupported data format %s.', hdr.format(2));
     end
 
+    bpe = bpa * elem_per_pt;
+    nelem = hdr.data_size / bpe;
+
     if hdr.type == 2000
-        bpe = bpa * elem_per_pt;
-        number_of_elements = hdr.data_size / bpe / hdr.subsize;
+        number_of_elements = nelem / hdr.subsize;
     elseif hdr.type == 5001
         bpe = hdr.reclen;
         number_of_elements = hdr.data_size / bpe;
@@ -627,4 +646,42 @@ function C = strsplitnull(str)
     if append
         C{end+1} = char([]);
     end
+end % function
+
+% Return main header key names
+function main_keynames_c = main_keynames(hdr)
+
+    main_keynames_c = {};
+    if isfield(hdr,'mainkeywords')
+        mkl = hdr.mainkeywords.keylength;
+        mkv = strsplitnull(hdr.mainkeywords.keywords);
+        for kk=1:numel(mkv)
+            if numel(mkv{kk})
+                key = strsplit(mkv{kk},'=');
+                main_keynames_c{end+1} = key{1};
+            end
+        end
+    end
+
+end % function
+
+% Remove specified elements from cell_array
+function filtered_list = remove_from_list(remove_these, from_these)
+
+    for kk = 1:numel(from_these)
+        keyname = from_these{kk}{1};
+        for jj = 1:numel(remove_these)
+            if strcmp(keyname,remove_these{jj})
+                from_these{kk} = {};
+                break
+            end
+        end
+    end
+    filtered_list = {};
+    for kk = 1:numel(from_these)
+        if ~isempty(from_these{kk})
+            filtered_list{end+1} = from_these{kk};
+        end
+    end
+
 end % function
